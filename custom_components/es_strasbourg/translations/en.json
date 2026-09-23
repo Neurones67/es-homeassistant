@@ -47,6 +47,10 @@
           "description": "Absolute path of the CSV. Default: es_strasbourg/export.csv in the configuration folder. Its folder must be listed in allowlist_external_dirs."
         }
       }
+    },
+    "clear_statistics": {
+      "name": "Delete imported history",
+      "description": "Permanently deletes the whole imported consumption statistic (administrators only). Use it before re-importing everything, starting with the oldest CSV."
     }
   }
 }

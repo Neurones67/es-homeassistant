@@ -47,6 +47,10 @@
           "description": "Chemin absolu du CSV. Par défaut : es_strasbourg/export.csv dans le dossier de configuration. Son dossier doit figurer dans allowlist_external_dirs."
         }
       }
+    },
+    "clear_statistics": {
+      "name": "Supprimer l'historique importé",
+      "description": "Supprime définitivement toute la statistique de consommation importée (réservé aux administrateurs). À utiliser avant de tout réimporter, en commençant par le CSV le plus ancien."
     }
   }
 }

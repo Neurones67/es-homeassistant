@@ -15,6 +15,7 @@ La configuration se fait dans l'interface (config_flow.py), une seule instance.
 
 from __future__ import annotations
 
+import asyncio
 import base64
 from email.errors import HeaderParseError
 from email.header import decode_header, make_header
@@ -22,10 +23,12 @@ import logging
 
 import voluptuous as vol
 
+from homeassistant.components.recorder import get_instance
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.service import async_register_admin_service
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
@@ -40,6 +43,7 @@ from .const import (
     DOMAIN,
     IMAP_DOMAIN,
     IMAP_EVENT,
+    SERVICE_CLEAR_STATISTICS,
     SERVICE_IMPORT_CSV,
 )
 from .csv_parser import parse_csv
@@ -48,6 +52,9 @@ from .statistics import async_import_records
 _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+# Durée maximale d'attente de la suppression par le recorder (secondes).
+CLEAR_STATISTICS_TIMEOUT = 30
 
 IMPORT_CSV_SCHEMA = vol.Schema({vol.Optional(ATTR_PATH): cv.string})
 
@@ -107,7 +114,7 @@ async def _async_import_content(hass: HomeAssistant, content: bytes, name: str) 
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Enregistre l'action d'import manuel (disponible une fois l'intégration ajoutée)."""
+    """Enregistre les actions d'import manuel et de remise à zéro."""
 
     async def _handle_import_csv(call: ServiceCall) -> dict:
         entries = hass.config_entries.async_loaded_entries(DOMAIN)
@@ -140,12 +147,28 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         count = await _async_import_content(hass, content, name)
         return {"imported": count, "path": path}
 
+    async def _handle_clear_statistics(call: ServiceCall) -> None:
+        """Supprime tout l'historique importé, pour repartir d'un import propre."""
+        done = asyncio.Event()
+        get_instance(hass).async_clear_statistics(
+            [DEFAULT_STATISTIC_ID],
+            on_done=lambda: hass.loop.call_soon_threadsafe(done.set),
+        )
+        # On attend la fin réelle : un import lancé juste après repart de zéro.
+        async with asyncio.timeout(CLEAR_STATISTICS_TIMEOUT):
+            await done.wait()
+        _LOGGER.warning("Statistique « %s » supprimée", DEFAULT_STATISTIC_ID)
+
     hass.services.async_register(
         DOMAIN,
         SERVICE_IMPORT_CSV,
         _handle_import_csv,
         schema=IMPORT_CSV_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
+    )
+    # Destructif : réservé aux administrateurs, comme recorder/clear_statistics.
+    async_register_admin_service(
+        hass, DOMAIN, SERVICE_CLEAR_STATISTICS, _handle_clear_statistics
     )
     return True
 

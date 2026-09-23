@@ -36,6 +36,8 @@ CSV_CONTENT_TYPES = frozenset(
 
 # Service de backfill manuel depuis un fichier.
 SERVICE_IMPORT_CSV = "import_csv"
+# Remise à zéro : supprime toute la statistique importée.
+SERVICE_CLEAR_STATISTICS = "clear_statistics"
 ATTR_PATH = "path"
 # Relatif au dossier de config. Ce dossier doit figurer dans
 # allowlist_external_dirs (le dossier de config ne l'est pas par défaut).

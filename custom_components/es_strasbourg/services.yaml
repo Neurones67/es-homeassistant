@@ -6,3 +6,5 @@ import_csv:
       example: /config/es_strasbourg/Consommation_Journaliere.csv
       selector:
         text:
+
+clear_statistics:

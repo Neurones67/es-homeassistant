@@ -156,6 +156,29 @@ async def test_import_is_idempotent(es_hass: HomeAssistant, tmp_path: Path) -> N
     assert await _daily_changes(es_hass, min(expected), max(expected)) == first
 
 
+async def test_clear_statistics_then_reimport(es_hass: HomeAssistant, tmp_path: Path) -> None:
+    """Cas « production déjà remplie » : purge, puis réimport propre depuis zéro."""
+    # Données préexistantes incohérentes : série qui ne démarre pas à 0.
+    lines = SAMPLE.read_bytes().split(b"\n")
+    late = tmp_path / "late.csv"
+    late.write_bytes(b"\n".join(lines[:2] + lines[100:]))
+    await es_hass.services.async_call(
+        DOMAIN, "import_csv", {"path": str(late)}, blocking=True, return_response=True
+    )
+    await async_wait_recording_done(es_hass)
+
+    await es_hass.services.async_call(DOMAIN, "clear_statistics", {}, blocking=True)
+    await async_wait_recording_done(es_hass)
+    expected = _expected_daily()
+    assert await _daily_changes(es_hass, min(expected), max(expected)) == {}
+
+    # Réimport complet : la série repart de 0 au premier jour, sans pic.
+    await _import_sample(es_hass, tmp_path)
+    assert await _daily_changes(es_hass, min(expected), max(expected)) == expected
+    changes = await _daily_changes(es_hass, min(expected) - timedelta(days=2), min(expected))
+    assert changes.get(min(expected) - timedelta(days=1), 0) == 0
+
+
 async def test_import_csv_rejects_forbidden_path(es_hass: HomeAssistant) -> None:
     with pytest.raises(Exception, match="non autorisé"):
         await es_hass.services.async_call(

@@ -119,6 +119,19 @@ téléchargez un export depuis l'espace client ES, puis injectez-le en une fois 
 
    La réponse indique le nombre de points importés.
 
+### Repartir de zéro
+
+Si la statistique contient déjà des données douteuses (import dans le mauvais
+ordre, ancienne version de l'intégration…), supprimez-la puis réimportez :
+
+1. Faites une **sauvegarde** (Paramètres → Système → Sauvegardes) : la
+   suppression est définitive.
+2. Appelez `es_strasbourg.clear_statistics` (réservé aux administrateurs).
+3. Réimportez les CSV **du plus ancien au plus récent** avec `import_csv`.
+
+Le tableau Énergie n'a pas à être reconfiguré : la statistique garde le même
+identifiant.
+
 ### 4. Ajout au tableau de bord Énergie
 
 Paramètres → Tableaux de bord → **Énergie** → *Ajouter une consommation* →
