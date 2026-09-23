@@ -198,6 +198,29 @@ async def test_import_csv_config_dir_not_allowed_by_default(es_hass: HomeAssista
         )
 
 
+async def test_import_csv_relative_path_from_config_dir(
+    es_hass: HomeAssistant, tmp_path: Path
+) -> None:
+    """Un chemin relatif part du dossier de config ; l'erreur montre le chemin complet."""
+    es_hass.config.config_dir = str(tmp_path)
+    (tmp_path / "es_strasbourg").mkdir()
+    (tmp_path / "es_strasbourg" / "export.csv").write_bytes(SAMPLE.read_bytes())
+
+    response = await es_hass.services.async_call(
+        DOMAIN, "import_csv", {"path": "es_strasbourg/export.csv"},
+        blocking=True, return_response=True,
+    )
+    assert response["path"] == str(tmp_path / "es_strasbourg" / "export.csv")
+    assert response["imported"] == 351
+
+    # « config/… » sans « / » initial : l'erreur révèle le chemin réellement testé.
+    with pytest.raises(ServiceValidationError, match=f"{tmp_path}/config/es_strasbourg"):
+        await es_hass.services.async_call(
+            DOMAIN, "import_csv", {"path": "config/es_strasbourg/export.csv"},
+            blocking=True, return_response=True,
+        )
+
+
 def _register_fake_fetch_part(hass: HomeAssistant) -> list[dict]:
     """Remplace imap.fetch_part par un faux renvoyant le CSV en base64."""
     calls: list[dict] = []

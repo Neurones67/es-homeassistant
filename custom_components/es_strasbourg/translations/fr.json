@@ -44,7 +44,7 @@
       "fields": {
         "path": {
           "name": "Chemin du fichier",
-          "description": "Chemin absolu du CSV. Par défaut : es_strasbourg/export.csv dans le dossier de configuration. Son dossier doit figurer dans allowlist_external_dirs."
+          "description": "Chemin du CSV : absolu (/config/es_strasbourg/export.csv) ou relatif au dossier de configuration (es_strasbourg/export.csv, la valeur par défaut). Son dossier doit figurer dans allowlist_external_dirs."
         }
       }
     },

@@ -125,14 +125,18 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             )
         name = entries[0].options.get(CONF_NAME, DEFAULT_NAME)
 
-        path = call.data.get(ATTR_PATH) or hass.config.path(DEFAULT_IMPORT_PATH)
+        # Un chemin relatif part du dossier de config (un chemin absolu est
+        # conservé tel quel) : « es_strasbourg/x.csv » = /config/es_strasbourg/x.csv.
+        path = hass.config.path(call.data.get(ATTR_PATH) or DEFAULT_IMPORT_PATH)
         # Le dossier de config n'est PAS autorisé d'office : seuls www/, les
         # dossiers média et allowlist_external_dirs le sont.
         if not await hass.async_add_executor_job(hass.config.is_allowed_path, path):
+            allowed = ", ".join(sorted(hass.config.allowlist_external_dirs))
             raise ServiceValidationError(
-                f"Chemin non autorisé : {path}. Ajoutez son dossier à "
-                "homeassistant > allowlist_external_dirs dans configuration.yaml "
-                f"(ex. {hass.config.path(DOMAIN)})."
+                f"Chemin non autorisé : {path}. Dossiers autorisés : {allowed}. "
+                "Ajoutez le dossier du fichier à homeassistant > "
+                "allowlist_external_dirs dans configuration.yaml (ex. "
+                f"{hass.config.path(DOMAIN)}), puis redémarrez Home Assistant."
             )
 
         def _read() -> bytes:

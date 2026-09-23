@@ -44,7 +44,7 @@
       "fields": {
         "path": {
           "name": "File path",
-          "description": "Absolute path of the CSV. Default: es_strasbourg/export.csv in the configuration folder. Its folder must be listed in allowlist_external_dirs."
+          "description": "CSV path: absolute (/config/es_strasbourg/export.csv) or relative to the configuration folder (es_strasbourg/export.csv, the default). Its folder must be listed in allowlist_external_dirs."
         }
       }
     },
