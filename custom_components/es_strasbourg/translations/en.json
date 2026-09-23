@@ -1,0 +1,52 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Électricité de Strasbourg",
+        "description": "Imports into the Energy dashboard the consumption CSV files e-mailed by ES. Set up the IMAP integration on the mailbox receiving these e-mails first.",
+        "data": {
+          "imap_entry": "IMAP account",
+          "sender": "Sender filter",
+          "name": "Statistic name"
+        },
+        "data_description": {
+          "imap_entry": "Mailbox receiving the ES CSV files. Leave empty to listen to all IMAP accounts.",
+          "sender": "Text searched in the sender address (case-insensitive). ES sends from vos-mesures-maconsolinky@strasbourg-electricite-reseaux.fr. Leave empty to accept any sender.",
+          "name": "Name shown in the Energy dashboard."
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Already configured. Use Options to change the settings."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Électricité de Strasbourg",
+        "data": {
+          "imap_entry": "IMAP account",
+          "sender": "Sender filter",
+          "name": "Statistic name"
+        },
+        "data_description": {
+          "imap_entry": "Mailbox receiving the ES CSV files. Leave empty to listen to all IMAP accounts.",
+          "sender": "Text searched in the sender address (case-insensitive). Leave empty to accept any sender.",
+          "name": "Name shown in the Energy dashboard."
+        }
+      }
+    }
+  },
+  "services": {
+    "import_csv": {
+      "name": "Import a consumption CSV",
+      "description": "Imports an Électricité de Strasbourg CSV export into long-term statistics. Useful to load the initial history.",
+      "fields": {
+        "path": {
+          "name": "File path",
+          "description": "Absolute path of the CSV. Default: es_strasbourg/export.csv in the configuration folder. Its folder must be listed in allowlist_external_dirs."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Électricité de Strasbourg",
+        "description": "Importe dans le tableau de bord Énergie les CSV de consommation envoyés par mail par ES. Configurez d'abord l'intégration IMAP sur la boîte qui reçoit ces mails.",
+        "data": {
+          "imap_entry": "Compte IMAP",
+          "sender": "Filtre sur l'expéditeur",
+          "name": "Nom de la statistique"
+        },
+        "data_description": {
+          "imap_entry": "Boîte mail qui reçoit les CSV d'ES. Laissez vide pour écouter tous les comptes IMAP.",
+          "sender": "Texte recherché dans l'adresse de l'expéditeur (insensible à la casse). ES envoie depuis vos-mesures-maconsolinky@strasbourg-electricite-reseaux.fr. Laissez vide pour accepter tout expéditeur.",
+          "name": "Nom affiché dans le tableau de bord Énergie."
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "L'intégration est déjà configurée. Modifiez-la via Options."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Électricité de Strasbourg",
+        "data": {
+          "imap_entry": "Compte IMAP",
+          "sender": "Filtre sur l'expéditeur",
+          "name": "Nom de la statistique"
+        },
+        "data_description": {
+          "imap_entry": "Boîte mail qui reçoit les CSV d'ES. Laissez vide pour écouter tous les comptes IMAP.",
+          "sender": "Texte recherché dans l'adresse de l'expéditeur (insensible à la casse). Laissez vide pour accepter tout expéditeur.",
+          "name": "Nom affiché dans le tableau de bord Énergie."
+        }
+      }
+    }
+  },
+  "services": {
+    "import_csv": {
+      "name": "Importer un CSV de consommation",
+      "description": "Importe un export CSV d'Électricité de Strasbourg dans les statistiques long terme. Utile pour charger l'historique initial.",
+      "fields": {
+        "path": {
+          "name": "Chemin du fichier",
+          "description": "Chemin absolu du CSV. Par défaut : es_strasbourg/export.csv dans le dossier de configuration. Son dossier doit figurer dans allowlist_external_dirs."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+# Libellés et descriptions : voir translations/*.json.
+import_csv:
+  fields:
+    path:
+      required: false
+      example: /config/es_strasbourg/Consommation_Journaliere.csv
+      selector:
+        text:

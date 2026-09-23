@@ -1,0 +1,14 @@
+{
+  "domain": "es_strasbourg",
+  "name": "Électricité de Strasbourg",
+  "codeowners": ["@neurones67"],
+  "config_flow": true,
+  "dependencies": ["imap", "recorder"],
+  "documentation": "https://github.com/neurones67/es-homeassistant",
+  "integration_type": "service",
+  "iot_class": "cloud_push",
+  "issue_tracker": "https://github.com/neurones67/es-homeassistant/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "0.2.0"
+}

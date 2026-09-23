@@ -1,0 +1,14 @@
+# Instance HA de test : contient le mot de passe IMAP et le compte HA.
+.ha-dev/
+
+# Environnement Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Réglages locaux de Claude Code
+.claude/settings.local.json
+
+# Vrais exports ES (données personnelles) : jamais publiés.
+donnees-reelles/

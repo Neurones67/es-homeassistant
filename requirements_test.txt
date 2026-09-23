@@ -1,0 +1,4 @@
+# Fournit homeassistant (2026.9.3) et les fixtures de test (hass, recorder_mock…).
+pytest-homeassistant-custom-component==0.13.366
+# Requis par l'intégration imap, dont dépend es_strasbourg.
+aioimaplib==2.0.1
