@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import asyncio
 import base64
+from dataclasses import dataclass
+from datetime import datetime
 from email.errors import HeaderParseError
 from email.header import decode_header, make_header
 import logging
@@ -28,6 +30,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.service import async_register_admin_service
 from homeassistant.helpers.typing import ConfigType
 
@@ -35,7 +38,10 @@ from .const import (
     ATTR_PATH,
     CONF_IMAP_ENTRY,
     CONF_NAME,
+    CONF_POWER,
     CONF_SENDER,
+    COST_NAME_SUFFIX,
+    COST_STATISTIC_ID,
     CSV_CONTENT_TYPES,
     DEFAULT_IMPORT_PATH,
     DEFAULT_NAME,
@@ -45,9 +51,11 @@ from .const import (
     IMAP_EVENT,
     SERVICE_CLEAR_STATISTICS,
     SERVICE_IMPORT_CSV,
+    TARIFF_REFRESH_INTERVAL,
 )
 from .csv_parser import parse_csv
-from .statistics import async_import_records
+from .statistics import async_import_records, async_rebuild_cost
+from .tariff_provider import TariffProvider
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -105,12 +113,48 @@ def _decode_part(response: dict) -> bytes | None:
     return raw
 
 
-async def _async_import_content(hass: HomeAssistant, content: bytes, name: str) -> int:
+@dataclass
+class EsRuntimeData:
+    """Données d'exécution de l'entrée (entry.runtime_data)."""
+
+    tariffs: TariffProvider
+    # Sérialise les recalculs du coût (import, rafraîchissement du barème).
+    cost_lock: asyncio.Lock
+
+
+type EsConfigEntry = ConfigEntry[EsRuntimeData]
+
+
+async def _async_update_cost(hass: HomeAssistant, entry: EsConfigEntry) -> None:
+    """Recalcule la statistique de coût si une puissance souscrite est choisie."""
+    power = entry.options.get(CONF_POWER)
+    runtime = entry.runtime_data
+    if not power or runtime.tariffs.table is None:
+        return
+    name = entry.options.get(CONF_NAME, DEFAULT_NAME) + COST_NAME_SUFFIX
+    async with runtime.cost_lock:
+        await async_rebuild_cost(
+            hass,
+            DEFAULT_STATISTIC_ID,
+            COST_STATISTIC_ID,
+            name,
+            runtime.tariffs.table,
+            int(power),
+        )
+
+
+async def _async_import_content(
+    hass: HomeAssistant, entry: EsConfigEntry, content: bytes
+) -> int:
     records = await hass.async_add_executor_job(parse_csv, content)
     if not records:
         _LOGGER.warning("CSV ES vide ou non reconnu")
         return 0
-    return await async_import_records(hass, records, DEFAULT_STATISTIC_ID, name)
+    name = entry.options.get(CONF_NAME, DEFAULT_NAME)
+    count = await async_import_records(hass, records, DEFAULT_STATISTIC_ID, name)
+    if count:
+        await _async_update_cost(hass, entry)
+    return count
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -123,7 +167,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 "Intégration Électricité de Strasbourg non configurée : ajoutez-la "
                 "dans Paramètres → Appareils et services."
             )
-        name = entries[0].options.get(CONF_NAME, DEFAULT_NAME)
+        entry = entries[0]
 
         # Un chemin relatif part du dossier de config (un chemin absolu est
         # conservé tel quel) : « es_strasbourg/x.csv » = /config/es_strasbourg/x.csv.
@@ -148,20 +192,22 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         except OSError as err:
             raise ServiceValidationError(f"Lecture impossible de {path} : {err}") from err
 
-        count = await _async_import_content(hass, content, name)
+        count = await _async_import_content(hass, entry, content)
         return {"imported": count, "path": path}
 
     async def _handle_clear_statistics(call: ServiceCall) -> None:
-        """Supprime tout l'historique importé, pour repartir d'un import propre."""
+        """Supprime tout l'historique importé (énergie et coût)."""
         done = asyncio.Event()
         get_instance(hass).async_clear_statistics(
-            [DEFAULT_STATISTIC_ID],
+            [DEFAULT_STATISTIC_ID, COST_STATISTIC_ID],
             on_done=lambda: hass.loop.call_soon_threadsafe(done.set),
         )
         # On attend la fin réelle : un import lancé juste après repart de zéro.
         async with asyncio.timeout(CLEAR_STATISTICS_TIMEOUT):
             await done.wait()
-        _LOGGER.warning("Statistique « %s » supprimée", DEFAULT_STATISTIC_ID)
+        _LOGGER.warning(
+            "Statistiques « %s » et « %s » supprimées", DEFAULT_STATISTIC_ID, COST_STATISTIC_ID
+        )
 
     hass.services.async_register(
         DOMAIN,
@@ -177,11 +223,38 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     return True
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Écoute les mails ES reçus par l'intégration IMAP."""
+async def async_setup_entry(hass: HomeAssistant, entry: EsConfigEntry) -> bool:
+    """Écoute les mails ES reçus par l'intégration IMAP et tient le coût à jour."""
     imap_entry = entry.options.get(CONF_IMAP_ENTRY)
     sender = entry.options.get(CONF_SENDER, "")
-    name = entry.options.get(CONF_NAME, DEFAULT_NAME)
+
+    tariffs = TariffProvider(hass)
+    await tariffs.async_load()
+    entry.runtime_data = EsRuntimeData(tariffs=tariffs, cost_lock=asyncio.Lock())
+
+    if entry.options.get(CONF_POWER):
+
+        async def _refresh_tariffs(startup: bool = False) -> None:
+            try:
+                if startup:
+                    # Options (puissance) peut-être modifiées : recalcul d'office.
+                    await _async_update_cost(hass, entry)
+                if await tariffs.async_refresh():
+                    await _async_update_cost(hass, entry)
+            except Exception:  # noqa: BLE001 - tâche de fond : on log seulement
+                _LOGGER.exception("Échec de la mise à jour du coût")
+
+        async def _periodic_refresh(_now: datetime) -> None:
+            await _refresh_tariffs()
+
+        entry.async_create_background_task(
+            hass, _refresh_tariffs(startup=True), f"{DOMAIN}_tarifs"
+        )
+        entry.async_on_unload(
+            async_track_time_interval(
+                hass, _periodic_refresh, TARIFF_REFRESH_INTERVAL
+            )
+        )
 
     async def _handle_imap_event(event: Event) -> None:
         data = event.data
@@ -217,22 +290,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             return
 
         try:
-            await _async_import_content(hass, content, name)
+            await _async_import_content(hass, entry, content)
         except Exception:  # noqa: BLE001 - un mail inattendu ne doit rien casser
             _LOGGER.exception("Échec de l'import du CSV reçu par mail")
 
     entry.async_on_unload(hass.bus.async_listen(IMAP_EVENT, _handle_imap_event))
 
     _LOGGER.info(
-        "%s prêt : écoute des mails (compte %s, expéditeur %s) → statistique « %s »",
+        "%s prêt : écoute des mails (compte %s, expéditeur %s) → statistique « %s » ; "
+        "coût : %s (barème : %s)",
         DOMAIN,
         imap_entry or "tous",
         sender or "tous",
         DEFAULT_STATISTIC_ID,
+        f"{entry.options[CONF_POWER]} kVA" if entry.options.get(CONF_POWER) else "désactivé",
+        tariffs.source,
     )
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Le listener est retiré via entry.async_on_unload."""
+async def async_unload_entry(hass: HomeAssistant, entry: EsConfigEntry) -> bool:
+    """Listener et rafraîchissement périodique retirés via entry.async_on_unload."""
     return True

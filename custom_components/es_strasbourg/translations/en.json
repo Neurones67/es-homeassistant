@@ -7,12 +7,14 @@
         "data": {
           "imap_entry": "IMAP account",
           "sender": "Sender filter",
-          "name": "Statistic name"
+          "name": "Statistic name",
+          "power_kva": "Subscribed power (cost)"
         },
         "data_description": {
           "imap_entry": "Mailbox receiving the ES CSV files. Leave empty to listen to all IMAP accounts.",
           "sender": "Text searched in the sender address (case-insensitive). ES sends from vos-mesures-maconsolinky@strasbourg-electricite-reseaux.fr. Leave empty to accept any sender.",
-          "name": "Name shown in the Energy dashboard."
+          "name": "Name shown in the Energy dashboard.",
+          "power_kva": "To compute the cost at the regulated blue tariff, Base option (CRE price list, incl. taxes and subscription). Leave empty to skip cost computation."
         }
       }
     },
@@ -27,12 +29,14 @@
         "data": {
           "imap_entry": "IMAP account",
           "sender": "Sender filter",
-          "name": "Statistic name"
+          "name": "Statistic name",
+          "power_kva": "Subscribed power (cost)"
         },
         "data_description": {
           "imap_entry": "Mailbox receiving the ES CSV files. Leave empty to listen to all IMAP accounts.",
           "sender": "Text searched in the sender address (case-insensitive). Leave empty to accept any sender.",
-          "name": "Name shown in the Energy dashboard."
+          "name": "Name shown in the Energy dashboard.",
+          "power_kva": "To compute the cost at the regulated blue tariff, Base option (CRE price list, incl. taxes and subscription). Leave empty to skip cost computation."
         }
       }
     }

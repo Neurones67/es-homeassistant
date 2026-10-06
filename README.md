@@ -89,6 +89,7 @@ Paramètres → Appareils et services → **Ajouter une intégration** →
 | Compte IMAP | Boîte qui reçoit les CSV d'ES. Vide = tous les comptes IMAP. |
 | Filtre sur l'expéditeur | Texte cherché dans l'adresse de l'expéditeur (défaut `strasbourg` ; ES envoie depuis `vos-mesures-maconsolinky@strasbourg-electricite-reseaux.fr`). Vide = tout expéditeur. |
 | Nom de la statistique | Nom affiché dans le tableau Énergie. |
+| Puissance souscrite (coût) | 3 à 15 kVA : active le calcul du coût au tarif bleu (voir ci-dessous). Vide = pas de coût. |
 
 Ces réglages se modifient ensuite via **Configurer** sur l'intégration.
 
@@ -137,8 +138,26 @@ identifiant.
 Paramètres → Tableaux de bord → **Énergie** → *Ajouter une consommation* →
 choisissez **Consommation Électricité de Strasbourg**.
 
-> La statistique étant *externe*, elle apparaît sous son nom configuré. Le coût
-> peut être associé via un tarif fixe/entité dans la config Énergie si souhaité.
+Si une puissance souscrite est configurée, choisissez ensuite, pour le coût,
+**« Utiliser une entité suivant le coût total »** →
+**Consommation Électricité de Strasbourg (coût)**.
+
+### 5. Coût au tarif bleu réglementé
+
+Avec une puissance souscrite, l'intégration tient à jour une seconde statistique,
+`es_strasbourg:cost` (en euros) : pour chaque jour, **consommation × prix TTC du
+kWh en vigueur ce jour-là + abonnement TTC du jour** (abonnement annuel / 365).
+L'historique est donc chiffré au bon tarif, y compris lors des changements de
+février et d'août.
+
+- **Barème** : [historique open data de la CRE](https://www.cre.fr/documents/open-data/historique-des-tarifs-reglementes-de-vente-delectricite-pour-les-consommateurs-residentiels.html),
+  option Base, téléchargé au démarrage puis une fois par semaine, conservé en cache.
+  Une copie est embarquée dans l'intégration si la CRE est injoignable.
+- **Recalcul complet** du coût après chaque import, changement de barème ou de
+  puissance : il reste cohérent quel que soit l'ordre des imports.
+- **ELD** : le tarif bleu est national ; le prix du kWh appliqué par ÉS est
+  identique à celui de la CRE. L'abonnement TTC facturé par ÉS peut différer de
+  quelques dizaines de centimes **par an**.
 
 ## Détails techniques du format CSV
 
@@ -207,6 +226,8 @@ scripts/ha-dev.sh reset      # tout effacer (compte, statistiques)
 - **Trous entre deux imports** : si des jours manquent entre deux CSV, toute leur
   consommation apparaît sur le premier jour suivant le trou. Importez un export
   couvrant la période manquante pour la répartir correctement.
+- **Coût** : option Base uniquement, de 3 à 15 kVA (puissances publiées par la
+  CRE). Hors régularisations, remises ou frais annexes de facturation.
 - Contrats **HP/HC** : non gérés ici (l'export d'exemple est en option Base, une
   seule série). Le format aurait des colonnes supplémentaires à mapper sur deux
   statistiques.

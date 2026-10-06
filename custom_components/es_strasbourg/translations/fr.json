@@ -7,12 +7,14 @@
         "data": {
           "imap_entry": "Compte IMAP",
           "sender": "Filtre sur l'expéditeur",
-          "name": "Nom de la statistique"
+          "name": "Nom de la statistique",
+          "power_kva": "Puissance souscrite (coût)"
         },
         "data_description": {
           "imap_entry": "Boîte mail qui reçoit les CSV d'ES. Laissez vide pour écouter tous les comptes IMAP.",
           "sender": "Texte recherché dans l'adresse de l'expéditeur (insensible à la casse). ES envoie depuis vos-mesures-maconsolinky@strasbourg-electricite-reseaux.fr. Laissez vide pour accepter tout expéditeur.",
-          "name": "Nom affiché dans le tableau de bord Énergie."
+          "name": "Nom affiché dans le tableau de bord Énergie.",
+          "power_kva": "Pour calculer le coût au tarif bleu réglementé, option Base (barème CRE, TTC, abonnement inclus). Laissez vide pour ne pas calculer de coût."
         }
       }
     },
@@ -27,12 +29,14 @@
         "data": {
           "imap_entry": "Compte IMAP",
           "sender": "Filtre sur l'expéditeur",
-          "name": "Nom de la statistique"
+          "name": "Nom de la statistique",
+          "power_kva": "Puissance souscrite (coût)"
         },
         "data_description": {
           "imap_entry": "Boîte mail qui reçoit les CSV d'ES. Laissez vide pour écouter tous les comptes IMAP.",
           "sender": "Texte recherché dans l'adresse de l'expéditeur (insensible à la casse). Laissez vide pour accepter tout expéditeur.",
-          "name": "Nom affiché dans le tableau de bord Énergie."
+          "name": "Nom affiché dans le tableau de bord Énergie.",
+          "power_kva": "Pour calculer le coût au tarif bleu réglementé, option Base (barème CRE, TTC, abonnement inclus). Laissez vide pour ne pas calculer de coût."
         }
       }
     }

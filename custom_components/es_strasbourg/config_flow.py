@@ -16,12 +16,17 @@ from homeassistant.core import callback
 from homeassistant.helpers.selector import (
     ConfigEntrySelector,
     ConfigEntrySelectorConfig,
+    SelectOptionDict,
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
     TextSelector,
 )
 
 from .const import (
     CONF_IMAP_ENTRY,
     CONF_NAME,
+    CONF_POWER,
     CONF_SENDER,
     DEFAULT_NAME,
     DEFAULT_SENDER,
@@ -30,15 +35,24 @@ from .const import (
 )
 
 
+# Puissances disponibles dans l'historique CRE du tarif bleu option Base.
+POWER_CHOICES = [3, 6, 9, 12, 15]
+
+
+def _suggested(value: Any) -> dict[str, Any] | None:
+    """Valeur pré-remplie d'un champ optionnel (vidable, contrairement à default)."""
+    return {"suggested_value": value} if value else None
+
+
 def _schema(defaults: dict[str, Any]) -> vol.Schema:
     """Formulaire commun à l'assistant et à l'écran Options."""
     imap_entry = defaults.get(CONF_IMAP_ENTRY)
+    power = defaults.get(CONF_POWER)
     return vol.Schema(
         {
             # Optionnel : sans compte choisi, tous les comptes IMAP sont écoutés.
             vol.Optional(
-                CONF_IMAP_ENTRY,
-                description={"suggested_value": imap_entry} if imap_entry else None,
+                CONF_IMAP_ENTRY, description=_suggested(imap_entry)
             ): ConfigEntrySelector(ConfigEntrySelectorConfig(integration=IMAP_DOMAIN)),
             vol.Optional(
                 CONF_SENDER, default=defaults.get(CONF_SENDER, DEFAULT_SENDER)
@@ -46,6 +60,18 @@ def _schema(defaults: dict[str, Any]) -> vol.Schema:
             vol.Required(
                 CONF_NAME, default=defaults.get(CONF_NAME, DEFAULT_NAME)
             ): TextSelector(),
+            # Optionnel : sans puissance, aucun coût n'est calculé.
+            vol.Optional(
+                CONF_POWER, description=_suggested(str(power) if power else None)
+            ): SelectSelector(
+                SelectSelectorConfig(
+                    options=[
+                        SelectOptionDict(value=str(kva), label=f"{kva} kVA")
+                        for kva in POWER_CHOICES
+                    ],
+                    mode=SelectSelectorMode.DROPDOWN,
+                )
+            ),
         }
     )
 
@@ -57,6 +83,10 @@ def _clean(user_input: dict[str, Any]) -> dict[str, Any]:
     options[CONF_NAME] = options[CONF_NAME].strip() or DEFAULT_NAME
     if not options.get(CONF_IMAP_ENTRY):
         options.pop(CONF_IMAP_ENTRY, None)
+    if options.get(CONF_POWER):
+        options[CONF_POWER] = int(options[CONF_POWER])
+    else:
+        options.pop(CONF_POWER, None)
     return options
 
 

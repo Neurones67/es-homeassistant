@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from unittest.mock import patch
 
+import aiohttp
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -15,6 +17,7 @@ from homeassistant.data_entry_flow import FlowResultType
 from custom_components.es_strasbourg.const import (
     CONF_IMAP_ENTRY,
     CONF_NAME,
+    CONF_POWER,
     CONF_SENDER,
     DEFAULT_NAME,
     DEFAULT_SENDER,
@@ -57,6 +60,21 @@ async def test_user_flow_creates_entry(flow_hass: HomeAssistant) -> None:
     assert flow_hass.config_entries.async_loaded_entries(DOMAIN)
 
 
+async def test_user_flow_power_stored_as_int(flow_hass: HomeAssistant) -> None:
+    result = await flow_hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    with patch(
+        "custom_components.es_strasbourg.tariff_provider.async_fetch_cre_csv",
+        side_effect=aiohttp.ClientError,
+    ):
+        result = await flow_hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_SENDER: "strasbourg", CONF_NAME: "Conso", CONF_POWER: "9"}
+        )
+        await flow_hass.async_block_till_done(wait_background_tasks=True)
+    assert result["options"][CONF_POWER] == 9
+
+
 async def test_single_instance(flow_hass: HomeAssistant) -> None:
     MockConfigEntry(domain=DOMAIN, options={CONF_NAME: DEFAULT_NAME}).add_to_hass(flow_hass)
 
@@ -96,7 +114,7 @@ async def test_options_flow_updates_and_reloads(flow_hass: HomeAssistant) -> Non
 def test_translations_cover_form_fields(lang: str) -> None:
     """Chaque champ du formulaire a un libellé, dans l'assistant et les options."""
     strings = json.loads((INTEGRATION_DIR / "translations" / f"{lang}.json").read_text())
-    fields = {CONF_IMAP_ENTRY, CONF_SENDER, CONF_NAME}
+    fields = {CONF_IMAP_ENTRY, CONF_SENDER, CONF_NAME, CONF_POWER}
     assert set(strings["config"]["step"]["user"]["data"]) == fields
     assert set(strings["options"]["step"]["init"]["data"]) == fields
     assert "import_csv" in strings["services"]
